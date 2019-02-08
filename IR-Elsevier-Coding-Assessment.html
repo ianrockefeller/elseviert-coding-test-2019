@@ -111,6 +111,7 @@ function getPatient(id = '1316024') {
 }
 
 $(function() {
+  $('#patient_id_input').val('1316024')
   $('#submit_button').click(function() {
     var patientId = $('#patient_id_input').val();
     console.log('submit button patient id = ' + patientId);
