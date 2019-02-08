@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css" />
+
+    <!-- JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script>
+      /*
+      2/6/2019
+      Ian Rockefeller
+      SMART on FHIR Coding Exercise
+      -------------
+      I established the scope of my web application design by considering the alloted time (1-3 hours) and defined application objectives within the abstract.
+
+      I also aim to use the stated logic requirements as my focal point for development scope to determine what features of a web application matter most for the given project. 
+
+      For example, since the exercise abstract tends to focus on the retreival and display of API data, I will omit spending development time on style and security and focus more on performance and clarity.
+
+      I will be leveraging the following technologies to assist me in development:
+      - jQuery for DOM manipulation
+      - Bootstrap for boilerplate CSS
+      - DataTables in order to implement table requirements, e.g. sorting, pagination, etc.
+      - ES6 for code clarity
+
+      Input takes patient ID. Press submit to call the API and populate the table
+      */
+    </script>
+  </head>
+  <body>
+    <section class="section" style="padding: 3em 0;">
+      <div class="container">
+        <div id="input">
+          <span><b>Patient ID:</b></span> 
+          <input type="number" name="id" id="patient_id_input" />
+          <button id="submit_button">Submit</button>
+        </div>
+        <hr>
+        <h3>Patient Information:</h3>
+        <div id="patient_output" style="margin-bottom: 1em;"></div>
+        <h3>Condition History:</h3>
+        <table id="output" style="display: none;">
+          <thead>
+            <tr>
+              <th>Condition Name</th>
+              <th>Date Recorded</th>
+              <th>Link</th>
+            </tr>
+          </thead>
+        </table> 
+      </div>
+    </section>
+<script>
+function getPatient(id = '1316024') {
+  const baseUrl = 'https://fhir-open.sandboxcerner.com/dstu2/0b8a0111-e8e6-4c26-a91c-5069cbc6b1ca/';
+
+  fetch(baseUrl + 'Patient/' + id, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json+fhir' }
+    })
+    .then(response => {
+      if(response.ok) return response.json();
+    })
+    .then(data => {
+      document.getElementById('patient_output').innerHTML =`
+        <p><b>Name:</b> ${data.name[0].text}</p>
+        <p><b>Gender:</b> ${data.gender}</p>
+        <p><b>DOB:</b> ${data.birthDate}</p>
+      `;
+    });
+
+  fetch(baseUrl + 'Condition?patient=' + id + '&category=diagnosis&clinicalstatus=active' , {
+      method: 'GET',
+      headers: { 'Accept': 'application/json+fhir' }
+    })
+    .then(response => {
+      if(response.ok) return response.json();
+    })
+    .then(data => {  
+      // get subset of each entry object
+      let entries = data.entry.map(entry => {
+        // assuming resourceType and clinicalStatus are correct
+        // also omitting HTML escaping on output
+        let url = 'https://www.ncbi.nlm.nih.gov/pubmed/?term=' + entry.resource.code.text;
+        return {
+          id: entry.resource.id,
+          dateRecorded: entry.resource.dateRecorded,
+          name: entry.resource.code.text,
+          url: `<a href="${url}">${url}</a>`
+        };
+      });
+    
+      $('#output').DataTable({
+        data: entries,
+        columns: [
+          { data: 'name' },
+          { data: 'dateRecorded' },
+          { data: 'url' }
+        ],
+        order: [[1, 'desc']]
+      })
+    
+      $('#output').show();
+    });  
+}
+
+$(function() {
+  $('#submit_button').click(function() {
+    var patientId = $('#patient_id_input').val();
+    console.log('submit button patient id = ' + patientId);
+    if(patientId != '') {
+      getPatient(patientId);
+    }
+    
+  });    
+});
+</script>
+  </body>
+</html>
